@@ -39,6 +39,28 @@ class Listing(models.Model):
 
         return f"{self.title}"
 
+    def get_bids(self):
+        """ Return all bids for listing """
+
+        return self.bids.all()
+
+    @property
+    def bid_count(self):
+        """ Returns the number of bids for a listing """
+
+        return self.get_bids().count()
+
+    def get_highest_bid(self):
+        """ Returns the highest bid for a listing """
+
+        return self.get_bids().order_by("-amount").first()
+
+    @property
+    def highest_bid(self):
+        """ Returns the highest bid for a listing """
+
+        return self.get_bids().order_by("-amount").first()
+
     @property
     def highest_bid_username(self):
         """
@@ -46,7 +68,10 @@ class Listing(models.Model):
         the starting bid amount
         """
 
-        return self.bids.all().order_by("-amount").first().user.username or None
+        try:
+            return self.highest_bid.user.username
+        except AttributeError:
+            return None
 
     @property
     def highest_bid_amount(self):
@@ -54,7 +79,23 @@ class Listing(models.Model):
         Returns the username of the user with the highest bid if one exists
         """
 
-        return self.bids.all().order_by("-amount").first().amount or None
+        try:
+            return self.highest_bid.amount
+        except AttributeError:
+            return self.starting_bid
+
+
+class Comment(models.Model):
+    body = models.TextField()
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="commenters")
+    listing = models.ForeignKey(
+        Listing, on_delete=models.CASCADE, related_name="comments"
+    )
+    created_at = models.DateField(auto_now_add=True)
+
+    def __str__(self):
+
+        return f"{self.user.username} on {self.listing.title} at {self.created_at}"
 
 
 class Bid(models.Model):

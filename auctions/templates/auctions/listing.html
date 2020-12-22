@@ -13,7 +13,7 @@
     {% else %}
         <h3>{{ listing.starting_bid }}</h3>
     {% endif %} {% endcomment %}
-    <h3>{{ high_bid }}</h3>
+    <h3>${{ high_bid }}</h3>
     <br>
     {% load crispy_forms_tags %}
     {% if bid_form %}
@@ -32,10 +32,15 @@
             {% crispy close_listing_form %}
         {% endif %}
     {% endif %}
-    <br>
+    {% if bid_message %}
+        <p>{{ bid_message }}</p>
+    {% endif %}
+    {% comment %} {% crispy comment_form %} {% endcomment %}
+    {% comment %} <br> {% endcomment %}
     <h3>Details</h3>
     <ul>
         <li>Listed by: {{ listing.user.username }}</li>
         <li>Category: {{ listing.category.title }}</li>
+        <li>Listed on: {{ listing.created_at }}</li>
     </ul>
 {% endblock %}

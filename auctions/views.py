@@ -12,7 +12,7 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
 
-from .models import Bid, Category, Listing, User
+from .models import Bid, Category, Comment, Listing, User
 
 
 class ListingForm(forms.ModelForm):
@@ -53,6 +53,28 @@ class BidForm(forms.ModelForm):
         ]
 
 
+class CommentForm(forms.ModelForm):
+    """ Form for adding comments to Listings """
+
+    def __init__(self, *args, **kwargs):
+        listing_id = kwargs.pop("listing_id", None)
+        # user_id = kwargs.pop("user_id", None)
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        # self.helper.form_id = 'id-myModelForm'
+        # self.helper.form_class = 'form-horizontal'
+        # self.helper.form_error_title = 'Form Errors'
+        self.helper.form_action = listing_id
+        self.helper.help_text_inline = True
+        self.helper.add_input(Submit("add_comment", "Add Comment"))
+
+    class Meta:
+        model = Comment
+        fields = [
+            "body",
+        ]
+
+
 class CloseListingForm(forms.ModelForm):
     """ Form for closing bids by the lister """
 
@@ -87,8 +109,12 @@ def get_listing(request, listing_id):
     listing = Listing.objects.get(pk=listing_id)
 
     # if bidding user is not logged in, redirect to the login page
-    # otherwise create a bid entry for the user
+    # otherwise create a bid entry for the user if they are not the listing user
+    # if they are the listing user, close the listing
     if request.method == "POST":
+        # import pdb
+
+        # pdb.set_trace()
         user = request.user
 
         if not user.is_authenticated:
@@ -103,12 +129,12 @@ def get_listing(request, listing_id):
             listing.closed = True
             listing.save()
 
+        # always redirect on post to prevent form resubmission on refresh!
+        return HttpResponseRedirect(reverse("get_listing", args=(listing_id,)))
+
     # get the highest bid if one exists, otherwise display the starting bid
-    high_bid = listing.bids.all().order_by("-amount").first()
-    if high_bid is not None:
-        high_bid_amount = high_bid.amount
-    else:
-        high_bid_amount = listing.starting_bid
+    # high_bid = listing.bids.all().order_by("-amount").first()
+    high_bid_amount = listing.highest_bid_amount
 
     # don't form the bid form to the listing user
     # checking the usernames seems ok as django forces them to be unique
@@ -116,11 +142,20 @@ def get_listing(request, listing_id):
     bid_form = None
     close_listing_form = None
     high_bid_user = None
+    if listing.bid_count > 1:
+        bid_message = f"There are {listing.bid_count} bids on this listing"
+    else:
+        bid_message = f"There is {listing.bid_count} bid on this listing"
+
     if request.user.username != listing.user.username:
         bid_form = BidForm(high_bid=high_bid_amount, listing_id=listing_id)
+        if request.user.username == listing.highest_bid_username:
+            bid_message = f"{bid_message} (You have the highest bid)"
+
     else:
-        if high_bid is not None:
-            high_bid_user = high_bid.user.username
+        # if high_bid is not None:
+        #     high_bid_user = high_bid.user.username
+        high_bid_user = listing.highest_bid_username
         if not listing.closed:
             close_listing_form = CloseListingForm(listing_id=listing_id)
 
@@ -132,7 +167,9 @@ def get_listing(request, listing_id):
             "high_bid": high_bid_amount,
             "high_bid_user": high_bid_user,
             "bid_form": bid_form,
+            "bid_message": bid_message,
             "close_listing_form": close_listing_form,
+            # "comment_form": CommentForm(listing_id=listing_id),
         },
     )
 

@@ -1,0 +1,41 @@
+{% extends "auctions/layout.html" %}
+
+{% block body %}
+    <h2>Listing: {{ listing.title }}</h2>
+    {% if listing.image_url %}
+        <img src="{{ listing.image_url }}" alt="{{ listing.title }}">
+    {% endif %}
+    <br>
+    {{ listing.description }}
+    <br>
+    {% comment %} {% if high_bid %}
+        <h3>{{ high_bid }}</h3>
+    {% else %}
+        <h3>{{ listing.starting_bid }}</h3>
+    {% endif %} {% endcomment %}
+    <h3>{{ high_bid }}</h3>
+    <br>
+    {% load crispy_forms_tags %}
+    {% if bid_form %}
+        {% crispy bid_form %}
+    {% else %}
+        {% if high_bid_user %}
+            {% if listing.closed %}
+                <p>Winning user: {{ high_bid_user }}
+            {% else %}
+                <p>User with current highest bid: {{ high_bid_user }}</p>
+            {% endif %}
+        {% else %}
+            <p>No bids entered</p>
+        {% endif %}
+        {% if close_listing_form %}
+            {% crispy close_listing_form %}
+        {% endif %}
+    {% endif %}
+    <br>
+    <h3>Details</h3>
+    <ul>
+        <li>Listed by: {{ listing.user.username }}</li>
+        <li>Category: {{ listing.category.title }}</li>
+    </ul>
+{% endblock %}

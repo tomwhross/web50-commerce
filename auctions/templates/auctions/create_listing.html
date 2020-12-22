@@ -1,0 +1,20 @@
+{% extends "auctions/layout.html" %}
+{% load crispy_forms_tags %}
+{% block body %}
+
+    <h2>Create Listing</h2>
+
+    {% if message %}
+        <div>{{ message }}</div>
+    {% endif %}
+
+    {% comment %} <form action="{% url 'create_listing' %}" method="post"> {% endcomment %}
+        {% comment %} {% csrf_token %} {% endcomment %}
+        {% crispy form %} 
+        {% comment %} <br> {% endcomment %}
+        {% comment %} <input class="btn btn-primary" type="submit" value="Create Listing"> {% endcomment %}
+    {% comment %} </form> {% endcomment %}
+
+    {% comment %} Don't have an account? <a href="{% url 'register' %}">Register here.</a> {% endcomment %}
+
+{% endblock %}

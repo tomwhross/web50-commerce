@@ -43,8 +43,9 @@ class BidForm(forms.ModelForm):
         # self.helper.form_error_title = 'Form Errors'
         self.helper.form_action = listing_id
         self.helper.help_text_inline = True
-        self.fields["amount"].widget.attrs["min"] = high_bid + decimal.Decimal(0.01)
-        self.helper.add_input(Submit("submit", "Place Bid"))
+        if high_bid:
+            self.fields["amount"].widget.attrs["min"] = high_bid + decimal.Decimal(0.01)
+        self.helper.add_input(Submit("place_bid", "Place Bid"))
 
     class Meta:
         model = Bid
@@ -88,7 +89,7 @@ class CloseListingForm(forms.ModelForm):
         self.helper.form_action = listing_id
         self.helper.help_text_inline = True
         # self.fields["amount"].widget.attrs["min"] = high_bid + decimal.Decimal(0.01)
-        self.helper.add_input(Submit("submit", "Close Auction"))
+        self.helper.add_input(Submit("close_auction", "Close Auction"))
 
     class Meta:
         model = Listing
@@ -101,6 +102,34 @@ def index(request):
     listings = Listing.objects.filter(closed=False).order_by("-created_at", "-pk")
 
     return render(request, "auctions/index.html", {"listings": listings})
+
+
+def add_listing_bid(request, listing):
+    """ Add bid on listing """
+
+    if request.user.username != listing.user.username:
+        form = BidForm(request.POST)
+
+        if form.is_valid():
+            bid_amount = form.cleaned_data["amount"]
+            bid = Bid(amount=bid_amount, user=request.user, listing=listing)
+            bid.save()
+
+    return HttpResponseRedirect(reverse("get_listing", args=(listing.id,)))
+
+
+def add_listing_comment(request, listing):
+    """ Add a comment to a listing """
+
+    form = CommentForm(request.POST)
+
+    if form.is_valid():
+
+        comment_body = form.cleaned_data["body"]
+        comment = Comment(body=comment_body, listing=listing, user=request.user)
+        comment.save()
+
+    return HttpResponseRedirect(reverse("get_listing", args=(listing.id,)))
 
 
 def get_listing(request, listing_id):
@@ -121,16 +150,21 @@ def get_listing(request, listing_id):
 
             return HttpResponseRedirect(reverse("login"))
 
-        if user.username != listing.user.username:
-            bid_amount = request.POST["amount"]
-            bid = Bid(amount=bid_amount, user=user, listing=listing)
-            bid.save()
-        else:
+        # if request.POST
+
+        if "place_bid" in request.POST:
+            return add_listing_bid(request, listing)
+
+        if "add_comment" in request.POST:
+            return add_listing_comment(request, listing)
+
+        if "close_auction" in request.POST:
+
             listing.closed = True
             listing.save()
 
-        # always redirect on post to prevent form resubmission on refresh!
-        return HttpResponseRedirect(reverse("get_listing", args=(listing_id,)))
+            # always redirect on post to prevent form resubmission on refresh!
+            return HttpResponseRedirect(reverse("get_listing", args=(listing_id,)))
 
     # get the highest bid if one exists, otherwise display the starting bid
     # high_bid = listing.bids.all().order_by("-amount").first()
@@ -159,6 +193,8 @@ def get_listing(request, listing_id):
         if not listing.closed:
             close_listing_form = CloseListingForm(listing_id=listing_id)
 
+    listing_comments = listing.comments.all()
+
     return render(
         request,
         "auctions/listing.html",
@@ -169,8 +205,30 @@ def get_listing(request, listing_id):
             "bid_form": bid_form,
             "bid_message": bid_message,
             "close_listing_form": close_listing_form,
-            # "comment_form": CommentForm(listing_id=listing_id),
+            "listing_comments": listing_comments,
+            "comment_form": CommentForm(listing_id=listing_id),
         },
+    )
+
+
+def get_categories(request):
+    """ Returns a list of categories with active listings """
+
+    categories = Category.objects.filter(listings__closed=False)
+
+    return render(request, "auctions/categories.html", {"categories": categories})
+
+
+def get_categories_listings(request, category_id):
+    """ Returns a list of active listings for a given category """
+
+    listings = Listing.objects.filter(category__id=category_id, closed=False)
+    category_title = listings[0].category.title
+
+    return render(
+        request,
+        "auctions/category_listings.html",
+        {"listings": listings, "category_title": category_title},
     )
 
 

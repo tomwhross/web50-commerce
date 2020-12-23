@@ -1,0 +1,43 @@
+{% extends "auctions/layout.html" %}
+
+{% block body %}
+    <h2>Active Listings - {{ category_title }}</h2>
+    {% if listings %}
+    <br>
+    <ul>
+        {% for listing in listings %}
+        <br>
+        <div class="container border border-secondary rounded-sm">
+            <div class="row">
+                <div class="col-sm" style="margin: 50;">
+                    {% if listing.image_url %}
+                        <div>
+                            <img class="img-rounded img-fluid rounded float-left" src="{{ listing.image_url }}" alt="listing.title">
+                        </div>
+                    {% else %}
+                        <div>
+                            <img class="img-rounded img-fluid rounded float-left" src="https://piotrkowalski.pw/assets/camaleon_cms/image-not-found-4a963b95bf081c3ea02923dceaeb3f8085e1a654fc54840aac61a57a60903fef.png" alt="listing.title">
+                        </div> 
+                    {% endif %}
+                </div>
+                <div class="col-sm">
+                    <span>
+                        <br>
+                        <p><a href="{% url 'get_listing' listing.id %}"><b>{{ listing.title }}</b></a></p>
+                        {% comment %} Price: ${{ listing.starting_bid }} {% endcomment %}
+                        Price: ${{ listing.highest_bid_amount }}
+                        <br>
+                        {{ listing.description }}
+                    </span>
+                    <span "align-bottom">
+                        <hr> 
+                        <p style="color: grey; font-size: 12px"><i>Listed on {{ listing.created_at }}</i></p>
+                    </span>
+                </div>
+            </div>
+        </div>
+        {% comment %} <li><a href="{% url 'get_listing' listing.id %}">{{ listing }}</a></li> {% endcomment %}
+        {% endfor %}
+    </ul>
+    {% endif %}
+{% endblock %}

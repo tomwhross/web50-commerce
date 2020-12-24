@@ -91,7 +91,7 @@ class Comment(models.Model):
     listing = models.ForeignKey(
         Listing, on_delete=models.CASCADE, related_name="comments"
     )
-    created_at = models.DateField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
 
@@ -121,7 +121,7 @@ class Watchlist(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)
 
-    class Meta(object):
+    class Meta:
         unique_together = ("user", "listing")
 
     def __str__(self):

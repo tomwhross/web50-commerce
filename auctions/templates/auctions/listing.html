@@ -21,7 +21,8 @@
     {% load crispy_forms_tags %}
     {% if bid_form %}
         {% crispy bid_form %}
-    {% else %}
+    {% endif %}
+    {% comment %} {% else %}
         {% if high_bid_user %}
             {% if listing.closed %}
                 <p>Winning user: {{ high_bid_user }}
@@ -30,10 +31,9 @@
             {% endif %}
         {% else %}
             {% comment %} <p>No bids entered</p> {% endcomment %}
-        {% endif %}
-        {% if close_listing_form %}
-            {% crispy close_listing_form %}
-        {% endif %}
+        {% comment %} {% endif %} {% endcomment %}
+    {% if close_listing_form %}
+        {% crispy close_listing_form %}
     {% endif %}
     {% if bid_message %}
         <p>{{ bid_message }}</p>
@@ -45,11 +45,15 @@
         <li>Category: {{ listing.category.title }}</li>
         <li>Listed on: {{ listing.created_at }}</li>
     </ul>
-    <hr>
-    <h3>Comments</h3>
+    {% if listing_comments or comment_form %}
+        <hr>
+        <h3>Comments</h3>
+    {% endif %}
     {% for comment in listing_comments %}
-        <p>{{ comment.body }}<br><i>By {{ comment.user.username }}on {{ comment.created_at }}</i></p>
+        <p>{{ comment.body }}<br><i>By {{ comment.user.username }} on {{ comment.created_at }}</i></p>
     {% endfor %}
     <br>
-    {% crispy comment_form %}
+    {% if comment_form %}
+        {% crispy comment_form %}
+    {% endif %}
 {% endblock %}

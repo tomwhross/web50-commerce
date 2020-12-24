@@ -146,8 +146,75 @@ def check_listing_on_watchlist(request, listing):
     return listing_on_watchlist
 
 
-def get_winner(request, listing):
-    """ Get the winner of a closed listing """
+def set_listing(request, listing):
+    """ Allow authed users to bid, post comments, and close the listing """
+    if not request.user.is_authenticated:
+        return HttpResponseRedirect(reverse("login"))
+
+    if "place_bid" in request.POST:
+        return add_listing_bid(request, listing)
+
+    if "add_comment" in request.POST:
+        return add_listing_comment(request, listing)
+
+    if "close_auction" in request.POST:
+
+        listing.closed = True
+        listing.save()
+
+        # always redirect on post to prevent form resubmission on refresh!
+        return HttpResponseRedirect(reverse("get_listing", args=(listing.id,)))
+
+
+def get_active_listing(request, listing):
+    """ View for active listings """
+
+    close_listing_form = None
+    bid_form = None
+    bid_message = None
+
+    listing_id = str(listing.id)
+
+    # listing user
+    if listing.user.username == request.user.username:
+        close_listing_form = CloseListingForm(listing_id=listing_id)
+
+        if not listing.highest_bid_username:
+            bid_message = "There are no bids on this listing"
+        elif listing.bid_count > 1:
+            bid_message = f"There are {listing.bid_count} bids on this listing ({listing.highest_bid_username} has the highest bid)"
+        else:
+            bid_message = f"There is {listing.bid_count} bid on this listing ({listing.highest_bid_username} has the highest bid)"
+
+    # high-bid user
+    elif listing.highest_bid_username == request.user.username:
+        bid_form = BidForm(high_bid=listing.highest_bid_amount, listing_id=listing_id)
+        bid_message = "You currently have the highest bid on this listing"
+
+    # other authed user
+    else:
+        bid_form = BidForm(high_bid=listing.highest_bid_amount, listing_id=listing_id)
+        bid_message = "Enter a bid"
+
+    return close_listing_form, bid_form, bid_message
+
+
+def get_closed_listing(request, listing):
+    """ View for closed listings """
+
+    # listing user
+    if listing.user.username == request.user.username:
+        if not listing.highest_bid_username:
+            return "There were no bids on this listing"
+
+        return f"{listing.highest_bid_username} won the auction"
+
+    # high bid user
+    if listing.highest_bid_username == request.user.username:
+        return "You won this acution"
+
+    # other authed user
+    return "This auction is closed"
 
 
 def get_listing(request, listing_id):
@@ -155,69 +222,36 @@ def get_listing(request, listing_id):
 
     listing = Listing.objects.get(pk=listing_id)
 
+    if request.method == "POST":
+        return set_listing(request, listing)
+
+    bid_form = None
+    bid_message = None
+    close_listing_form = None
+    high_bid_amount = listing.highest_bid_amount
+    high_bid_user = None
+    comment_form = None
     listing_on_watchlist = check_listing_on_watchlist(request, listing)
 
-    # if bidding user is not logged in, redirect to the login page
-    # otherwise create a bid entry for the user if they are not the listing user
-    # if they are the listing user, close the listing
-    if request.method == "POST":
-        # import pdb
+    # for authenticated users
+    if request.user.is_authenticated:
 
-        # pdb.set_trace()
-        user = request.user
+        listing_on_watchlist = check_listing_on_watchlist(request, listing)
+        comment_form = CommentForm(listing_id=listing_id)
 
-        if not user.is_authenticated:
-
-            return HttpResponseRedirect(reverse("login"))
-
-        # if request.POST
-
-        if "place_bid" in request.POST:
-            return add_listing_bid(request, listing)
-
-        if "add_comment" in request.POST:
-            return add_listing_comment(request, listing)
-
-        if "close_auction" in request.POST:
-
-            listing.closed = True
-            listing.save()
-
-            # always redirect on post to prevent form resubmission on refresh!
-            return HttpResponseRedirect(reverse("get_listing", args=(listing_id,)))
-
-    # get the highest bid if one exists, otherwise display the starting bid
-    # high_bid = listing.bids.all().order_by("-amount").first()
-    high_bid_amount = listing.highest_bid_amount
-
-    # don't form the bid form to the listing user
-    # checking the usernames seems ok as django forces them to be unique
-    # show the high bid user to the listing user instead
-    bid_form = None
-    close_listing_form = None
-    high_bid_user = None
-    if listing.bid_count > 1:
-        bid_message = f"There are {listing.bid_count} bids on this listing"
-    else:
-        bid_message = f"There is {listing.bid_count} bid on this listing"
-
-    if request.user.username != listing.user.username:
-        bid_form = BidForm(high_bid=high_bid_amount, listing_id=listing_id)
-        if request.user.username == listing.highest_bid_username:
-            bid_message = f"{bid_message} (You have the highest bid)"
-
-    else:
-        # if high_bid is not None:
-        #     high_bid_user = high_bid.user.username
-        high_bid_user = listing.highest_bid_username
+        # active listing logic
         if not listing.closed:
-            close_listing_form = CloseListingForm(listing_id=listing_id)
+            close_listing_form, bid_form, bid_message = get_active_listing(
+                request, listing
+            )
 
-    if listing.closed:
-        bid_message = "Listing is closed"
-        bid_form = None
-        if request.user.username == listing.highest_bid_username:
-            bid_message = "You won the listing"
+        # closed listing logic
+        else:
+            bid_message = get_closed_listing(request, listing)
+
+    else:
+        bid_form = BidForm(high_bid=listing.highest_bid_amount, listing_id=listing_id)
+        bid_message = "Login to place a bid on this listing"
 
     listing_comments = listing.comments.all()
 
@@ -232,7 +266,7 @@ def get_listing(request, listing_id):
             "bid_message": bid_message,
             "close_listing_form": close_listing_form,
             "listing_comments": listing_comments,
-            "comment_form": CommentForm(listing_id=listing_id),
+            "comment_form": comment_form,
             "listing_on_watchlist": listing_on_watchlist,
         },
     )
@@ -348,6 +382,7 @@ def register(request):
 
 @login_required
 def create_listing(request):
+    """ Create an auction listing """
 
     if request.method == "POST":
         category = Category.objects.get(pk=request.POST["category"])

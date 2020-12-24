@@ -38,9 +38,6 @@ class BidForm(forms.ModelForm):
         listing_id = kwargs.pop("listing_id", None)
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
-        # self.helper.form_id = 'id-myModelForm'
-        # self.helper.form_class = 'form-horizontal'
-        # self.helper.form_error_title = 'Form Errors'
         self.helper.form_action = listing_id
         self.helper.help_text_inline = True
         if high_bid:
@@ -161,16 +158,10 @@ def get_listing(request, listing_id):
     # otherwise create a bid entry for the user if they are not the listing user
     # if they are the listing user, close the listing
     if request.method == "POST":
-        # import pdb
-
-        # pdb.set_trace()
         user = request.user
 
         if not user.is_authenticated:
-
             return HttpResponseRedirect(reverse("login"))
-
-        # if request.POST
 
         if "place_bid" in request.POST:
             return add_listing_bid(request, listing)
@@ -179,7 +170,6 @@ def get_listing(request, listing_id):
             return add_listing_comment(request, listing)
 
         if "close_auction" in request.POST:
-
             listing.closed = True
             listing.save()
 

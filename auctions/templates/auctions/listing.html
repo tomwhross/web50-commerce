@@ -2,6 +2,14 @@
 
 {% block body %}
     <h2>Listing: {{ listing.title }}</h2>
+    {% if listing_on_watchlist %}
+        <a class="btn btn-secondary btn-sm" href="{% url 'remove_from_watchlist' listing.id %}">Remove from Watchlist</a>
+    {% else %}
+        <a class="btn btn-primary btn-sm" href="{% url 'add_to_watchlist' listing.id %}">Add to Watchlist</a>
+    {% endif %}
+    
+    <br>
+    <br>
     {% if listing.image_url %}
         <img src="{{ listing.image_url }}" alt="{{ listing.title }}">
     {% endif %}
@@ -21,7 +29,7 @@
                 <p>User with current highest bid: {{ high_bid_user }}</p>
             {% endif %}
         {% else %}
-            <p>No bids entered</p>
+            {% comment %} <p>No bids entered</p> {% endcomment %}
         {% endif %}
         {% if close_listing_form %}
             {% crispy close_listing_form %}

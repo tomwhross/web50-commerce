@@ -12,7 +12,7 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
 
-from .models import Bid, Category, Comment, Listing, User
+from .models import Bid, Category, Comment, Listing, User, Watchlist
 
 
 class ListingForm(forms.ModelForm):
@@ -104,6 +104,7 @@ def index(request):
     return render(request, "auctions/index.html", {"listings": listings})
 
 
+@login_required
 def add_listing_bid(request, listing):
     """ Add bid on listing """
 
@@ -118,6 +119,7 @@ def add_listing_bid(request, listing):
     return HttpResponseRedirect(reverse("get_listing", args=(listing.id,)))
 
 
+@login_required
 def add_listing_comment(request, listing):
     """ Add a comment to a listing """
 
@@ -132,10 +134,28 @@ def add_listing_comment(request, listing):
     return HttpResponseRedirect(reverse("get_listing", args=(listing.id,)))
 
 
+def check_listing_on_watchlist(request, listing):
+    """ Check if the listing is on the current user's watchlist """
+
+    listing_on_watchlist = False
+    if request.user.is_authenticated:
+        watchlist_entry = Watchlist.objects.filter(user=request.user, listing=listing)
+        if watchlist_entry:
+            listing_on_watchlist = True
+
+    return listing_on_watchlist
+
+
+def get_winner(request, listing):
+    """ Get the winner of a closed listing """
+
+
 def get_listing(request, listing_id):
     """ Listing detail page - Allows users to place Bids on Listing """
 
     listing = Listing.objects.get(pk=listing_id)
+
+    listing_on_watchlist = check_listing_on_watchlist(request, listing)
 
     # if bidding user is not logged in, redirect to the login page
     # otherwise create a bid entry for the user if they are not the listing user
@@ -193,6 +213,12 @@ def get_listing(request, listing_id):
         if not listing.closed:
             close_listing_form = CloseListingForm(listing_id=listing_id)
 
+    if listing.closed:
+        bid_message = "Listing is closed"
+        bid_form = None
+        if request.user.username == listing.highest_bid_username:
+            bid_message = "You won the listing"
+
     listing_comments = listing.comments.all()
 
     return render(
@@ -207,6 +233,7 @@ def get_listing(request, listing_id):
             "close_listing_form": close_listing_form,
             "listing_comments": listing_comments,
             "comment_form": CommentForm(listing_id=listing_id),
+            "listing_on_watchlist": listing_on_watchlist,
         },
     )
 
@@ -230,6 +257,37 @@ def get_categories_listings(request, category_id):
         "auctions/category_listings.html",
         {"listings": listings, "category_title": category_title},
     )
+
+
+@login_required
+def get_watchlist(request):
+    """ Returns listings that user is watching """
+
+    listings = Listing.objects.filter(watched_listings__user=request.user)
+
+    return render(request, "auctions/watchlist.html", {"listings": listings})
+
+
+@login_required
+def add_to_watchlist(request, listing_id):
+    """ Adds the current listing to the current user's watchlist """
+
+    watched_listing = Watchlist(user=request.user, listing_id=listing_id)
+
+    watched_listing.save()
+
+    return HttpResponseRedirect(reverse("get_listing", args=(listing_id,)))
+
+
+@login_required
+def remove_from_watchlist(request, listing_id):
+    """ Removes the current listing from the current user's watchlist """
+
+    watched_listing = Watchlist.objects.get(user=request.user, listing_id=listing_id)
+
+    watched_listing.delete()
+
+    return HttpResponseRedirect(reverse("get_listing", args=(listing_id,)))
 
 
 def login_view(request):

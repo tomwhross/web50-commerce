@@ -108,3 +108,22 @@ class Bid(models.Model):
     def __str__(self):
 
         return f"{self.user.first_name}: {self.listing.title} - {self.amount}"
+
+
+class Watchlist(models.Model):
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="watched_listings"
+    )
+    listing = models.ForeignKey(
+        Listing, on_delete=models.CASCADE, related_name="watched_listings"
+    )
+    deleted = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    modified_at = models.DateTimeField(auto_now=True)
+
+    class Meta(object):
+        unique_together = ("user", "listing")
+
+    def __str__(self):
+
+        return f"{self.user.username} - {self.user.watched_listings.count()} watched listings"

@@ -22,7 +22,13 @@
             </li>
             <li class="nav-item">
                 <a class="nav-link" href="{% url 'categories' %}">Categories</a>
-            </li
+            </li>
+            {% if user.is_authenticated %}
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'watchlist' %}">Watchlist 
+                <span class="badge badge-secondary">{{ watchlist_count }}</span></a>
+            </li>
+            {% endif %}
             {% if user.is_authenticated %}
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'create_listing' %}">Create Listing</a>
